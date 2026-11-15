@@ -1,5 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -13,53 +14,76 @@ class _RegisterPageState extends State<RegisterPage> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   final _namaController = TextEditingController();
-  
+
+  bool _obscurePassword = true;
   bool _isLoading = false;
 
-  final String _scriptUrl = 'MASUKKAN_URL_WEB_APP_APPS_SCRIPT_ANDA_DI_SINI';
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _passwordController.dispose();
+    _namaController.dispose();
+    super.dispose();
+  }
 
   Future<void> _handleRegister() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() {
-        _isLoading = true;
-      });
+    if (!_formKey.currentState!.validate()) return;
 
-      try {
-        final response = await http.post(
-          Uri.parse(_scriptUrl),
-          body: {
-            'action': 'register',
-            'username': _usernameController.text,
-            'password': _passwordController.text,
-            'nama': _namaController.text,
-          },
-        );
+    setState(() {
+      _isLoading = true;
+    });
 
-        // Pengecekan mounted untuk menghindari error async gap
+    final username = _usernameController.text.trim();
+    final password = _passwordController.text;
+    final nama = _namaController.text.trim();
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? akunJson = prefs.getString('daftar_akun');
+
+      // Muat daftar akun dari SharedPreferences
+      final Map<String, dynamic> daftarAkun = akunJson != null
+          ? jsonDecode(akunJson)
+          : {
+              'admin': {
+                'password': '123456',
+                'nama': 'Administrator',
+              }
+            };
+
+      // Cek apakah username/NIP sudah terdaftar
+      if (daftarAkun.containsKey(username)) {
         if (!mounted) return;
-
-        if (response.statusCode == 200) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Registrasi berhasil! Silakan login.')),
-          );
-          Navigator.pop(context);
-        } else {
-          throw Exception('Gagal terhubung ke server.');
-        }
-      } catch (e) {
-        if (!mounted) return;
-        
-        // Simulasi sukses lokal jika URL belum diatur
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Akun berhasil dibuat (Simulasi Lokal)!')),
+          const SnackBar(
+            content: Text('Username / NIP sudah terdaftar! Gunakan yang lain.'),
+            backgroundColor: Colors.orange,
+          ),
         );
-        Navigator.pop(context);
-      } finally {
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-          });
-        }
+        return;
+      }
+
+      // Simpan akun baru secara permanen ke SharedPreferences
+      daftarAkun[username] = {
+        'password': password,
+        'nama': nama,
+      };
+      await prefs.setString('daftar_akun', jsonEncode(daftarAkun));
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Akun berhasil disimpan permanen! Silakan login.'),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      Navigator.pop(context);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
       }
     }
   }
@@ -76,68 +100,106 @@ class _RegisterPageState extends State<RegisterPage> {
         color: Colors.grey[100],
         padding: const EdgeInsets.all(20.0),
         child: Center(
-          child: Card(
-            elevation: 4,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Form(
-                key: _formKey,
-                child: ListView(
-                  shrinkWrap: true,
-                  children: [
-                    const Text(
-                      "Pendaftaran Akun Tendik",
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 20),
-                    TextFormField(
-                      controller: _namaController,
-                      decoration: const InputDecoration(
-                        labelText: 'Nama Lengkap',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.badge),
+          child: SingleChildScrollView(
+            child: Card(
+              elevation: 4,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        "Pendaftaran Akun Tendik",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
                       ),
-                      validator: (value) => value == null || value.isEmpty ? 'Nama wajib diisi' : null,
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _usernameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Username / NIP',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.person),
+                      const SizedBox(height: 20),
+                      TextFormField(
+                        controller: _namaController,
+                        textInputAction: TextInputAction.next,
+                        decoration: const InputDecoration(
+                          labelText: 'Nama Lengkap',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.badge),
+                        ),
+                        validator: (value) => value == null || value.trim().isEmpty
+                            ? 'Nama wajib diisi'
+                            : null,
                       ),
-                      validator: (value) => value == null || value.isEmpty ? 'Username wajib diisi' : null,
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _passwordController,
-                      obscureText: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Password',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.lock),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _usernameController,
+                        textInputAction: TextInputAction.next,
+                        decoration: const InputDecoration(
+                          labelText: 'Username / NIP',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.person),
+                        ),
+                        validator: (value) => value == null || value.trim().isEmpty
+                            ? 'Username wajib diisi'
+                            : null,
                       ),
-                      validator: (value) => value == null || value.isEmpty ? 'Password wajib diisi' : null,
-                    ),
-                    const SizedBox(height: 24),
-                    _isLoading
-                        ? const Center(child: CircularProgressIndicator())
-                        : ElevatedButton(
-                            onPressed: _handleRegister,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF23d5ab),
-                              foregroundColor: Colors.white,
-                              minimumSize: const Size(double.infinity, 50),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _passwordController,
+                        obscureText: _obscurePassword,
+                        textInputAction: TextInputAction.done,
+                        onFieldSubmitted: (_) => _handleRegister(),
+                        decoration: InputDecoration(
+                          labelText: 'Password',
+                          border: const OutlineInputBorder(),
+                          prefixIcon: const Icon(Icons.lock),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscurePassword
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _obscurePassword = !_obscurePassword;
+                              });
+                            },
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Password wajib diisi';
+                          }
+                          if (value.length < 6) {
+                            return 'Password minimal 6 karakter';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 24),
+                      _isLoading
+                          ? const CircularProgressIndicator()
+                          : ElevatedButton(
+                              onPressed: _handleRegister,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF23d5ab),
+                                foregroundColor: Colors.white,
+                                minimumSize: const Size(double.infinity, 50),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                              child: const Text(
+                                'Daftar Sekarang',
+                                style: TextStyle(fontSize: 16),
                               ),
                             ),
-                            child: const Text('Daftar Sekarang', style: TextStyle(fontSize: 16)),
-                          ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
