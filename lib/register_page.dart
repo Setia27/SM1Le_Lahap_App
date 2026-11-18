@@ -1,6 +1,5 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -14,6 +13,12 @@ class _RegisterPageState extends State<RegisterPage> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   final _namaController = TextEditingController();
+
+  // Inisialisasi client Supabase
+  final _supabase = Supabase.instance.client;
+
+  // Sesuaikan dengan nama tabel user yang Anda buat di Supabase (sama seperti di LoginPage)
+  final String _namaTabel = 'profil_tendik';
 
   bool _obscurePassword = true;
   bool _isLoading = false;
@@ -38,21 +43,14 @@ class _RegisterPageState extends State<RegisterPage> {
     final nama = _namaController.text.trim();
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final String? akunJson = prefs.getString('daftar_akun');
+      // 1. Cek apakah Username / NIP sudah terdaftar di Supabase
+      final existingUser = await _supabase
+          .from(_namaTabel)
+          .select('nip')
+          .eq('nip', username)
+          .maybeSingle();
 
-      // Muat daftar akun dari SharedPreferences
-      final Map<String, dynamic> daftarAkun = akunJson != null
-          ? jsonDecode(akunJson)
-          : {
-              'admin': {
-                'password': '123456',
-                'nama': 'Administrator',
-              }
-            };
-
-      // Cek apakah username/NIP sudah terdaftar
-      if (daftarAkun.containsKey(username)) {
+      if (existingUser != null) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -63,22 +61,30 @@ class _RegisterPageState extends State<RegisterPage> {
         return;
       }
 
-      // Simpan akun baru secara permanen ke SharedPreferences
-      daftarAkun[username] = {
+      // 2. Simpan akun baru ke tabel Supabase
+      await _supabase.from(_namaTabel).insert({
+        'nip': username,
         'password': password,
         'nama': nama,
-      };
-      await prefs.setString('daftar_akun', jsonEncode(daftarAkun));
+      });
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Akun berhasil disimpan permanen! Silakan login.'),
+          content: Text('Akun berhasil didaftarkan! Silakan login.'),
           backgroundColor: Colors.green,
         ),
       );
 
       Navigator.pop(context);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Gagal mendaftarkan akun: $e'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
     } finally {
       if (mounted) {
         setState(() {
@@ -130,7 +136,8 @@ class _RegisterPageState extends State<RegisterPage> {
                           border: OutlineInputBorder(),
                           prefixIcon: Icon(Icons.badge),
                         ),
-                        validator: (value) => value == null || value.trim().isEmpty
+                        validator: (value) =>
+                            value == null || value.trim().isEmpty
                             ? 'Nama wajib diisi'
                             : null,
                       ),
@@ -143,7 +150,8 @@ class _RegisterPageState extends State<RegisterPage> {
                           border: OutlineInputBorder(),
                           prefixIcon: Icon(Icons.person),
                         ),
-                        validator: (value) => value == null || value.trim().isEmpty
+                        validator: (value) =>
+                            value == null || value.trim().isEmpty
                             ? 'Username wajib diisi'
                             : null,
                       ),

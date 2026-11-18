@@ -1,7 +1,6 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'form_page.dart';
 import 'register_page.dart';
@@ -18,9 +17,15 @@ class _LoginPageState extends State<LoginPage> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
 
+  // Inisialisasi client Supabase
+  final _supabase = Supabase.instance.client;
+
+  // Sesuaikan dengan nama tabel user yang Anda buat di Supabase
+  final String _namaTabel = 'profil_tendik';
+
   bool _obscurePassword = true;
   bool _isLoading = false;
-  bool _ingatSaya = false; // Status checkbox Ingat Saya
+  bool _ingatSaya = false;
 
   @override
   void initState() {
@@ -28,7 +33,6 @@ class _LoginPageState extends State<LoginPage> {
     _muatDataIngatSaya();
   }
 
-  // Memuat username yang tersimpan jika sebelumnya mencentang "Ingat Saya"
   Future<void> _muatDataIngatSaya() async {
     final prefs = await SharedPreferences.getInstance();
     final bool statusIngat = prefs.getBool('ingat_saya') ?? false;
@@ -49,20 +53,6 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  // Fungsi memastikan akun default 'admin' selalu tersimpan permanen jika belum ada
-  Future<Map<String, dynamic>> _getDaftarAkun(SharedPreferences prefs) async {
-    final String? akunJson = prefs.getString('daftar_akun');
-    Map<String, dynamic> daftarAkun = akunJson != null
-        ? jsonDecode(akunJson)
-        : {};
-
-    if (daftarAkun.isEmpty) {
-      daftarAkun['admin'] = {'password': '123456', 'nama': 'Administrator'};
-      await prefs.setString('daftar_akun', jsonEncode(daftarAkun));
-    }
-    return daftarAkun;
-  }
-
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -74,12 +64,18 @@ class _LoginPageState extends State<LoginPage> {
     final password = _passwordController.text;
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final daftarAkun = await _getDaftarAkun(prefs);
+      // 1. Cek kecocokan username & password ke Supabase
+      final response = await _supabase
+          .from(_namaTabel)
+          .select()
+          .eq('nip', username)
+          .eq('password', password)
+          .maybeSingle();
 
-      if (daftarAkun.containsKey(username) &&
-          daftarAkun[username]['password'] == password) {
-        // Simpan pengaturan "Ingat Saya"
+      if (response != null) {
+        final prefs = await SharedPreferences.getInstance();
+
+        // 2. Simpan pengaturan "Ingat Saya" secara lokal di perangkat
         await prefs.setBool('ingat_saya', _ingatSaya);
         if (_ingatSaya) {
           await prefs.setString('saved_username', username);
@@ -87,10 +83,10 @@ class _LoginPageState extends State<LoginPage> {
           await prefs.remove('saved_username');
         }
 
-        // Simpan identitas petugas aktif untuk FormPage dan PDF
+        // 3. Simpan identitas petugas aktif untuk FormPage dan PDF
         await prefs.setString(
           'current_user_nama',
-          daftarAkun[username]['nama'] ?? username,
+          response['nama'] ?? username,
         );
         await prefs.setString('current_user_nip', username);
 
@@ -108,6 +104,14 @@ class _LoginPageState extends State<LoginPage> {
           ),
         );
       }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Gagal terhubung ke server: $e'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
     } finally {
       if (mounted) {
         setState(() {
@@ -117,103 +121,140 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  // Dialog Reset Password
+  // Dialog Reset Password ke Supabase
   void _tampilkanDialogLupaPassword() {
     final resetUsernameCtrl = TextEditingController(
       text: _usernameController.text.trim(),
     );
     final newPasswordCtrl = TextEditingController();
     final resetFormKey = GlobalKey<FormState>();
+    bool isResetting = false;
 
     showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: const Text('Reset Password'),
-          content: Form(
-            key: resetFormKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'Masukkan Username/NIP Anda yang terdaftar untuk membuat password baru.',
-                  style: TextStyle(fontSize: 13),
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('Reset Password'),
+              content: Form(
+                key: resetFormKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'Masukkan Username/NIP Anda yang terdaftar untuk membuat password baru.',
+                      style: TextStyle(fontSize: 13),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: resetUsernameCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Username / NIP',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.person),
+                      ),
+                      validator: (val) => val == null || val.trim().isEmpty
+                          ? 'Username wajib diisi'
+                          : null,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: newPasswordCtrl,
+                      obscureText: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Password Baru',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.lock_reset),
+                      ),
+                      validator: (val) {
+                        if (val == null || val.isEmpty) {
+                          return 'Password baru wajib diisi';
+                        }
+                        if (val.length < 6) {
+                          return 'Minimal 6 karakter';
+                        }
+                        return null;
+                      },
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: resetUsernameCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Username / NIP',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.person),
-                  ),
-                  validator: (val) => val == null || val.trim().isEmpty
-                      ? 'Username wajib diisi'
-                      : null,
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isResetting ? null : () => Navigator.pop(context),
+                  child: const Text('Batal'),
                 ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: newPasswordCtrl,
-                  obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Password Baru',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.lock_reset),
-                  ),
-                  validator: (val) {
-                    if (val == null || val.isEmpty) {
-                      return 'Password baru wajib diisi';
-                    }
-                    if (val.length < 6) {
-                      return 'Minimal 6 karakter';
-                    }
-                    return null;
-                  },
+                ElevatedButton(
+                  onPressed: isResetting
+                      ? null
+                      : () async {
+                          if (!resetFormKey.currentState!.validate()) return;
+
+                          setDialogState(() => isResetting = true);
+                          final targetUser = resetUsernameCtrl.text.trim();
+
+                          try {
+                            // Cek apakah username ada di Supabase
+                            final existingUser = await _supabase
+                                .from(_namaTabel)
+                                .select('nip')
+                                .eq('nip', targetUser)
+                                .maybeSingle();
+
+                            if (!context.mounted) return;
+
+                            if (existingUser != null) {
+                              // Update password baru di Supabase
+                              await _supabase
+                                  .from(_namaTabel)
+                                  .update({'password': newPasswordCtrl.text})
+                                  .eq('nip', targetUser);
+                              if (!context.mounted) return;
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Password berhasil diperbarui! Silakan login.',
+                                  ),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Username / NIP tidak ditemukan!',
+                                  ),
+                                  backgroundColor: Colors.redAccent,
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Terjadi kesalahan: $e'),
+                                backgroundColor: Colors.redAccent,
+                              ),
+                            );
+                          } finally {
+                            if (context.mounted) {
+                              setDialogState(() => isResetting = false);
+                            }
+                          }
+                        },
+                  child: isResetting
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Simpan Password'),
                 ),
               ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Batal'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                if (!resetFormKey.currentState!.validate()) return;
-
-                final prefs = await SharedPreferences.getInstance();
-                final daftarAkun = await _getDaftarAkun(prefs);
-                final targetUser = resetUsernameCtrl.text.trim();
-
-                if (!context.mounted) return;
-
-                if (daftarAkun.containsKey(targetUser)) {
-                  daftarAkun[targetUser]['password'] = newPasswordCtrl.text;
-                  await prefs.setString('daftar_akun', jsonEncode(daftarAkun));
-
-                  if (!context.mounted) return;
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Password berhasil diperbarui! Silakan login.',
-                      ),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Username / NIP tidak ditemukan!'),
-                      backgroundColor: Colors.redAccent,
-                    ),
-                  );
-                }
-              },
-              child: const Text('Simpan Password'),
-            ),
-          ],
+            );
+          },
         );
       },
     );
@@ -232,21 +273,16 @@ class _LoginPageState extends State<LoginPage> {
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [
-              Color(0xFFee7752),
-              Color(0xFFe73c7e),
-              Color(0xFF23a6d5),
-              Color(0xFF23d5ab),
-            ],
+            colors: [Color.fromARGB(255, 255, 3, 184), Color.fromARGB(255, 35, 170, 228)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
         ),
+        padding: const EdgeInsets.all(20.0),
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20.0),
             child: Card(
-              elevation: 8,
+              elevation: 6,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
@@ -257,33 +293,34 @@ class _LoginPageState extends State<LoginPage> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Row(
-                        children: [
-                          Image.asset(
-                            'assets/images/logo_sekolah.png',
-                            width: 50,
-                            height: 50,
-                            fit: BoxFit.contain,
-                            errorBuilder: (context, error, stackTrace) {
-                              return const Icon(
-                                Icons.school,
-                                size: 40,
-                                color: Colors.blueAccent,
-                              );
-                            },
-                          ),
-                          const SizedBox(width: 16),
-                          const Expanded(
-                            child: Text(
-                              "AGENDA KEGIATAN",
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black87,
-                              ),
-                            ),
-                          ),
-                        ],
+                      Image.asset(
+                        'assets/images/logo_sekolah.png', // Sesuaikan dengan nama file logo sekolah Anda
+                        height: 85,
+                        width: 85,
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) {
+                          // Jika file gambar belum terbaca, tampilkan ikon cadangan
+                          return const Icon(
+                            Icons.school,
+                            size: 64,
+                            color: Color(0xFF23a6d5),
+                          );
+                        },
+                      ),
+
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Agenda Kegiatan Tendik',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Silakan masuk menggunakan akun Anda',
+                        style: TextStyle(fontSize: 13, color: Colors.grey),
                       ),
                       const SizedBox(height: 24),
                       TextFormField(
@@ -296,7 +333,7 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                         validator: (value) =>
                             value == null || value.trim().isEmpty
-                            ? 'Username wajib diisi'
+                            ? 'Username / NIP wajib diisi'
                             : null,
                       ),
                       const SizedBox(height: 16),
@@ -320,64 +357,32 @@ class _LoginPageState extends State<LoginPage> {
                                 _obscurePassword = !_obscurePassword;
                               });
                             },
-                            
                           ),
                         ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Password wajib diisi';
-                          }
-                          if (value.length < 6) {
-                            return 'Password minimal 6 karakter';
-                          }
-                          return null;
-                        },
+                        validator: (value) => value == null || value.isEmpty
+                            ? 'Password wajib diisi'
+                            : null,
                       ),
                       const SizedBox(height: 8),
-                      // Baris Checkbox "Ingat Saya" & Tombol "Lupa Password?"
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Row(
-                            mainAxisSize: MainAxisSize.min,
                             children: [
                               Checkbox(
                                 value: _ingatSaya,
-                                activeColor: const Color(0xFF23a6d5),
-                                visualDensity: VisualDensity.compact,
-                                onChanged: (value) {
+                                onChanged: (val) {
                                   setState(() {
-                                    _ingatSaya = value ?? false;
+                                    _ingatSaya = val ?? false;
                                   });
                                 },
                               ),
-                              GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    _ingatSaya = !_ingatSaya;
-                                  });
-                                },
-                                child: const Text(
-                                  'Ingat Saya',
-                                  style: TextStyle(fontSize: 13),
-                                ),
-                              ),
+                              const Text('Ingat Saya'),
                             ],
                           ),
                           TextButton(
                             onPressed: _tampilkanDialogLupaPassword,
-                            style: TextButton.styleFrom(
-                              padding: EdgeInsets.zero,
-                              minimumSize: const Size(0, 30),
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            ),
-                            child: const Text(
-                              'Lupa Password?',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Color(0xFF23a6d5),
-                              ),
-                            ),
+                            child: const Text('Lupa Password?'),
                           ),
                         ],
                       ),
@@ -395,17 +400,20 @@ class _LoginPageState extends State<LoginPage> {
                                 ),
                               ),
                               child: const Text(
-                                'Login',
+                                'Masuk',
                                 style: TextStyle(fontSize: 16),
                               ),
                             ),
-                      const SizedBox(height: 16),
-                      TextButton(
-                        onPressed: _navigateToRegister,
-                        child: const Text(
-                          'Belum punya akun? Buat Akun Baru',
-                          style: TextStyle(color: Colors.blueGrey),
-                        ),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text('Belum punya akun?'),
+                          TextButton(
+                            onPressed: _navigateToRegister,
+                            child: const Text('Daftar Sekarang'),
+                          ),
+                        ],
                       ),
                     ],
                   ),
