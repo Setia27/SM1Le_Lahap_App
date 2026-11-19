@@ -593,7 +593,7 @@ class _FormPageState extends State<FormPage> {
     } catch (_) {
       kopImage = null;
     }
-    final daftarTampil = daftarCetak.take(6).toList();
+    final daftarTampil = daftarCetak.toList();
     final List<pw.Widget> barisTugasWidgets = [];
     if (daftarTampil.length == 1) {
       barisTugasWidgets.add(
@@ -644,159 +644,174 @@ class _FormPageState extends State<FormPage> {
         }
       }
     }
-    // Format teks periode tanggal di header PDF
+        // Format teks periode tanggal di header PDF
     final fmt = DateFormat('dd/MM/yyyy');
     final teksPeriode = (fmt.format(tanggalMulai) == fmt.format(tanggalSelesai))
         ? fmt.format(tanggalMulai)
         : '${fmt.format(tanggalMulai)} s/d ${fmt.format(tanggalSelesai)}';
+
     pdf.addPage(
-      pw.Page(
+      pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.all(24),
+        // Opsional: Menampilkan nomor halaman di pojok kanan bawah
+        footer: (pw.Context context) {
+          return pw.Container(
+            alignment: pw.Alignment.centerRight,
+            margin: const pw.EdgeInsets.only(top: 8),
+            child: pw.Text(
+              'Halaman ${context.pageNumber} dari ${context.pagesCount}',
+              style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey600),
+            ),
+          );
+        },
         build: (pw.Context context) {
-          return pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              // 1. KOP RESMI SEKOLAH
-              pw.Row(
-                crossAxisAlignment: pw.CrossAxisAlignment.center,
-                children: [
-                  if (kopImage != null) ...[
-                    pw.Image(kopImage, width: 55, height: 55),
-                    pw.SizedBox(width: 10),
-                  ],
-                  pw.Expanded(
-                    child: pw.Column(
-                      crossAxisAlignment: pw.CrossAxisAlignment.center,
-                      children: [
-                        pw.Text(
-                          "PEMERINTAH PROVINSI JAWA BARAT",
-                          style: pw.TextStyle(
-                            fontSize: 10,
-                            fontWeight: pw.FontWeight.bold,
-                          ),
-                          textAlign: pw.TextAlign.center,
-                        ),
-                        pw.Text(
-                          "DINAS PENDIDIKAN",
-                          style: pw.TextStyle(
-                            fontSize: 12,
-                            fontWeight: pw.FontWeight.bold,
-                          ),
-                          textAlign: pw.TextAlign.center,
-                        ),
-                        pw.Text(
-                          "SMA NEGERI 1 LEMBANG",
-                          style: pw.TextStyle(
-                            fontSize: 14,
-                            fontWeight: pw.FontWeight.bold,
-                          ),
-                          textAlign: pw.TextAlign.center,
-                        ),
-                        pw.Text(
-                          "Jalan Maribaya No. 68 Telp. (022) 2786655 Kode POS 40391 NPSN. 20206211",
-                          style: pw.TextStyle(
-                            fontSize: 9.5,
-                            fontWeight: pw.FontWeight.bold,
-                          ),
-                          textAlign: pw.TextAlign.center,
-                        ),
-                        pw.RichText(
-                          textAlign: pw.TextAlign.center,
-                          text: pw.TextSpan(
-                            style: pw.TextStyle(
-                              fontSize: 8,
-                              fontStyle: pw.FontStyle.italic,
-                              color: PdfColors.black,
-                            ),
-                            children: [
-                              const pw.TextSpan(text: "website : "),
-                              const pw.TextSpan(
-                                text: "sman1lembang.sch.id",
-                                style: pw.TextStyle(color: PdfColors.blue),
-                              ),
-                              const pw.TextSpan(text: " | e-mail : "),
-                              const pw.TextSpan(
-                                text: "smansatulembang@gmail.com",
-                                style: pw.TextStyle(color: PdfColors.blue),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+          return [
+            // 1. KOP RESMI SEKOLAH
+            pw.Row(
+              crossAxisAlignment: pw.CrossAxisAlignment.center,
+              children: [
+                if (kopImage != null) ...[
+                  pw.Image(kopImage, width: 55, height: 55),
+                  pw.SizedBox(width: 10),
                 ],
-              ),
-              pw.SizedBox(height: 4),
-              pw.Divider(thickness: 1.5),
-              pw.SizedBox(height: 6),
-
-              // 2. JUDUL & IDENTITAS PETUGAS
-              pw.Center(
-                child: pw.Text(
-                  'LAPORAN AGENDA KEGIATAN TENAGA KEPENDIDIKAN',
-                  style: pw.TextStyle(
-                    fontSize: 11,
-                    fontWeight: pw.FontWeight.bold,
-                    decoration: pw.TextDecoration.underline,
-                  ),
-                ),
-              ),
-              pw.SizedBox(height: 6),
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  pw.Text(
-                    'Nama: $_namaUser  |  NIP/Username: $_nipUser',
-                    style: const pw.TextStyle(fontSize: 9.5),
-                  ),
-                  pw.Text(
-                    'Tanggal / Periode: $teksPeriode',
-                    style: const pw.TextStyle(fontSize: 9.5),
-                  ),
-                ],
-              ),
-              pw.SizedBox(height: 8),
-
-              // 3. DAFTAR KARTU TUGAS (PASTIKAN BARIS INI ADA!)
-              ...barisTugasWidgets,
-
-              pw.Spacer(),
-
-              // 4. TANDA TANGAN PETUGAS (PASTIKAN BAGIAN INI ADA!)
-              pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.end,
-                children: [
-                  pw.Column(
+                pw.Expanded(
+                  child: pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.center,
                     children: [
                       pw.Text(
-                        'Petugas Pelaksana,',
-                        style: const pw.TextStyle(fontSize: 9.5),
+                        "PEMERINTAH PROVINSI JAWA BARAT",
+                        style: pw.TextStyle(
+                          fontSize: 10,
+                          fontWeight: pw.FontWeight.bold,
+                        ),
+                        textAlign: pw.TextAlign.center,
                       ),
-                      pw.SizedBox(height: 36),
                       pw.Text(
-                        _namaUser,
+                        "DINAS PENDIDIKAN",
+                        style: pw.TextStyle(
+                          fontSize: 12,
+                          fontWeight: pw.FontWeight.bold,
+                        ),
+                        textAlign: pw.TextAlign.center,
+                      ),
+                      pw.Text(
+                        "SMA NEGERI 1 LEMBANG",
+                        style: pw.TextStyle(
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.bold,
+                        ),
+                        textAlign: pw.TextAlign.center,
+                      ),
+                      pw.Text(
+                        "Jalan Maribaya No. 68 Telp. (022) 2786655 Kode POS 40391 NPSN. 20206211",
                         style: pw.TextStyle(
                           fontSize: 9.5,
                           fontWeight: pw.FontWeight.bold,
-                          decoration: pw.TextDecoration.underline,
                         ),
+                        textAlign: pw.TextAlign.center,
                       ),
-                      pw.Text(
-                        'NIP. $_nipUser',
-                        style: const pw.TextStyle(fontSize: 9),
+                      pw.RichText(
+                        textAlign: pw.TextAlign.center,
+                        text: pw.TextSpan(
+                          style: pw.TextStyle(
+                            fontSize: 8,
+                            fontStyle: pw.FontStyle.normal,
+                            color: PdfColors.black,
+                          ),
+                          children: [
+                            const pw.TextSpan(text: "website : "),
+                            const pw.TextSpan(
+                              text: "sman1lembang.sch.id",
+                              style: pw.TextStyle(color: PdfColors.blue),
+                            ),
+                            const pw.TextSpan(text: " | e-mail : "),
+                            const pw.TextSpan(
+                              text: "smansatulembang@gmail.com",
+                              style: pw.TextStyle(color: PdfColors.blue),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
-                ],
+                ),
+              ],
+            ),
+            pw.SizedBox(height: 4),
+            pw.Divider(thickness: 1.5),
+            pw.SizedBox(height: 6),
+
+            // 2. JUDUL & IDENTITAS PETUGAS
+            pw.Center(
+              child: pw.Text(
+                'REKAP LAPORAN KEGIATAN',
+                style: pw.TextStyle(
+                  fontSize: 11,
+                  fontWeight: pw.FontWeight.bold,
+                  decoration: pw.TextDecoration.underline,
+                ),
               ),
-            ],
-          );
+            ),
+            pw.SizedBox(height: 6),
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Text(
+                  'Nama: $_namaUser  |  NIP/Username: $_nipUser',
+                  style: const pw.TextStyle(fontSize: 9.5),
+                ),
+                pw.Text(
+                  'Tanggal / Periode: $teksPeriode',
+                  style: const pw.TextStyle(fontSize: 9.5),
+                ),
+              ],
+            ),
+            pw.SizedBox(height: 8),
+
+            // 3. DAFTAR KARTU TUGAS
+            ...barisTugasWidgets,
+
+            // Pengganti pw.Spacer() agar tidak error di MultiPage
+            pw.SizedBox(height: 20),
+
+            // 4. TANDA TANGAN PETUGAS (Dibungkus pw.Wrap agar utuh saat pindah halaman)
+            pw.Wrap(
+              children: [
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.end,
+                  children: [
+                    pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.center,
+                      children: [
+                        pw.Text(
+                          'Petugas Pelaksana,',
+                          style: const pw.TextStyle(fontSize: 9.5),
+                        ),
+                        pw.SizedBox(height: 36),
+                        pw.Text(
+                          _namaUser,
+                          style: pw.TextStyle(
+                            fontSize: 9.5,
+                            fontWeight: pw.FontWeight.bold,
+                            decoration: pw.TextDecoration.underline,
+                          ),
+                        ),
+                        pw.Text(
+                          'NIP. $_nipUser',
+                          style: const pw.TextStyle(fontSize: 9),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ];
         },
       ),
     );
+
     await Printing.layoutPdf(
       onLayout: (PdfPageFormat format) async => pdf.save(),
     );
