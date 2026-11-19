@@ -167,9 +167,11 @@ class _FormPageState extends State<FormPage> {
     final ImagePicker picker = ImagePicker();
     final XFile? image = await picker.pickImage(
       source: ImageSource.camera,
-      imageQuality: 50,
+       maxWidth: 1024,      // Batasi lebar maksimal 1024 piksel
+      maxHeight: 1024,     // Batasi tinggi maksimal 1024 piksel
+      imageQuality: 65,    // Kualitas 65% sudah sangat tajam untuk ukuran 1024px
     );
-
+   
     if (image != null) {
       final Uint8List bytes = await image.readAsBytes();
       setState(() {
