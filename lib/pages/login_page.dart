@@ -319,7 +319,7 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                           SizedBox(height: 2),
                           Text(
-                            'Laporan Harian Pribadi',
+                            'Laporan Harian Pegawai',
                             style: TextStyle(
                               fontSize: 13.5,
                               fontWeight: FontWeight.w600,
@@ -334,12 +334,6 @@ class _LoginPageState extends State<LoginPage> {
                       const Text(
                         'Silakan masuk menggunakan akun Anda',
                         style: TextStyle(fontSize: 12.5, color: Colors.grey),
-                      ),
-
-                      const SizedBox(height: 4),
-                      const Text(
-                        'Silakan masuk menggunakan akun Anda',
-                        style: TextStyle(fontSize: 13, color: Colors.grey),
                       ),
                       const SizedBox(height: 24),
                       TextFormField(

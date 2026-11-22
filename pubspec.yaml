@@ -1,8 +1,8 @@
 name: agenda_tendik
-description: "Aplikasi Agen SM1Le - SMAN 1 Lembang"
+description: "Aplikasi SM1Le Lahap - SMAN 1 Lembang"
 publish_to: 'none'
 
-version: 1.0.2+5
+version: 1.0.2+6
 
 environment:
   sdk: ^3.13.7

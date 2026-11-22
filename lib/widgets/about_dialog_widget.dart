@@ -75,7 +75,7 @@ class AboutAplikasiDialog extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 const Text(
-                  'Laporan Harian Pribadi',
+                  'Laporan Harian Pegawai',
                   style: TextStyle(
                     fontSize: 12.5,
                     fontWeight: FontWeight.w500,
