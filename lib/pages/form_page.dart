@@ -300,25 +300,71 @@ class _FormPageState extends State<FormPage> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,
-        elevation: 1,
-        title: const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
+        elevation: 0,
+        titleSpacing: 12,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1.0),
+          child: Container(color: Colors.grey.shade200, height: 1.0),
+        ),
+        title: Row(
           children: [
-            Text(
-              'SM1Le Laporan Kegiatan',
-              style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
+            // Wadah ikon/logo sekolah dengan latar biru lembut
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: const Color(0xFF4FC3F7).withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Image.asset(
+                'assets/images/logo_lebah.png', // Bisa diganti 'assets/images/logo_sekolah.png'
+                width: 26,
+                height: 26,
+                fit: BoxFit.contain,
+                errorBuilder: (_, _, _) => const Icon(
+                  Icons.assignment_turned_in_rounded,
+                  color: Color(0xFF0288D1),
+                  size: 24,
+                ),
               ),
             ),
-            Text(
-              'SMAN 1 Lembang',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: Color.fromARGB(255, 77, 192, 254),
+            const SizedBox(width: 10),
+            // Teks judul dua warna + subjudul ringkas agar tidak terpotong
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  RichText(
+                    overflow: TextOverflow.ellipsis,
+                    text: const TextSpan(
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.5,
+                      ),
+                      children: [
+                        TextSpan(
+                          text: 'SM1Le ',
+                          style: TextStyle(color: Color(0xFF0288D1)),
+                        ),
+                        TextSpan(
+                          text: 'LAHAP',
+                          style: TextStyle(color: Colors.black87),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    'Laporan Harian • SMAN 1 Lembang',
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -327,36 +373,40 @@ class _FormPageState extends State<FormPage> {
           IconButton(
             icon: const Icon(
               Icons.info_outline_rounded,
-              color: Color(0xFF0077B6),
+              color: Color(0xFF0288D1),
+              size: 22,
             ),
             tooltip: 'Tentang Aplikasi',
             onPressed: () => AboutAplikasiDialog.tampilkan(context),
           ),
           Padding(
-            padding: const EdgeInsets.only(right: 12.0),
+            padding: const EdgeInsets.only(right: 12.0, left: 2.0),
             child: TextButton.icon(
               onPressed: _logout,
               style: TextButton.styleFrom(
                 foregroundColor: Colors.red.shade700,
                 backgroundColor: Colors.red.shade50,
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
+                  horizontal: 10,
+                  vertical: 6,
                 ),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
                   side: BorderSide(color: Colors.red.shade200, width: 1),
                 ),
               ),
-              icon: const Icon(Icons.logout_rounded, size: 18),
+              icon: const Icon(Icons.logout_rounded, size: 16),
               label: const Text(
                 'Keluar',
-                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12.5),
               ),
             ),
           ),
         ],
       ),
+
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(

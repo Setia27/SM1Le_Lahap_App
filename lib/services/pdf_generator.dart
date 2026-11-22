@@ -273,7 +273,18 @@ class PdfGenerator {
                           'Petugas Pelaksana,',
                           style: const pw.TextStyle(fontSize: 9.5),
                         ),
-                        pw.SizedBox(height: 36),
+                        pw.Container(
+                          height: 40,
+                          alignment: pw.Alignment.center,
+                          child: pw.Text(
+                            'TTD',
+                            style: pw.TextStyle(
+                              fontSize: 9,
+                              fontStyle: pw.FontStyle.italic,
+                              color: PdfColors.grey600,
+                            ),
+                          ),
+                        ),
                         pw.Text(
                           namaUser,
                           style: pw.TextStyle(

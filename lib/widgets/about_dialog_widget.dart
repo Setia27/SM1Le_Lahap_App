@@ -1,5 +1,5 @@
 // ============================================================================
-// Aplikasi   : Agen SM1Le - SMAN 1 Lembang
+// Aplikasi   : LAHAP - SMAN 1 Lembang
 // Dibuat oleh: SP_27
 // File       : about_dialog_widget.dart
 // ============================================================================
@@ -66,14 +66,23 @@ class AboutAplikasiDialog extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 const Text(
-                  'Agen SM1Le',
+                  'SM1Le Lahap',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF03045E),
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
+                const Text(
+                  'Laporan Harian Pribadi',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF03045E),
+                  ),
+                ),
+                const SizedBox(height: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                   decoration: BoxDecoration(
@@ -81,7 +90,7 @@ class AboutAplikasiDialog extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Text(
-                    'Versi 1.0.1',
+                    'Versi 1.0.2',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,

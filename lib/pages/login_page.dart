@@ -32,6 +32,7 @@ class _LoginPageState extends State<LoginPage> {
     super.initState();
     _muatDataIngatSaya();
   }
+
   Future<void> _muatDataIngatSaya() async {
     final data = await SessionService.getRememberMe();
     final bool statusIngat = data['ingat_saya'] as bool;
@@ -302,14 +303,39 @@ class _LoginPageState extends State<LoginPage> {
                         },
                       ),
                       const SizedBox(height: 12),
-                      const Text(
-                        'AGENDA KEGIATAN',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
+                      const Column(
+                        children: [
+                          Text(
+                            'LAHAP',
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 2.0,
+                              color: Color(
+                                0xFF0077B6,
+                              ), // Biru senada dengan tema sekolah
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          SizedBox(height: 2),
+                          Text(
+                            'Laporan Harian Pribadi',
+                            style: TextStyle(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black87,
+                              letterSpacing: 0.3,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
                       ),
+                      const SizedBox(height: 6),
+                      const Text(
+                        'Silakan masuk menggunakan akun Anda',
+                        style: TextStyle(fontSize: 12.5, color: Colors.grey),
+                      ),
+
                       const SizedBox(height: 4),
                       const Text(
                         'Silakan masuk menggunakan akun Anda',
