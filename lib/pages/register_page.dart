@@ -120,7 +120,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const Text(
-                        "Pendaftaran Akun Tendik",
+                        "Pendaftaran Akun",
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,

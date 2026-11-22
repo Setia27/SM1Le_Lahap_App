@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../services/session_service.dart';
 import 'form_page.dart';
 import 'register_page.dart';
 
@@ -32,13 +32,12 @@ class _LoginPageState extends State<LoginPage> {
     super.initState();
     _muatDataIngatSaya();
   }
-
   Future<void> _muatDataIngatSaya() async {
-    final prefs = await SharedPreferences.getInstance();
-    final bool statusIngat = prefs.getBool('ingat_saya') ?? false;
-    final String savedUsername = prefs.getString('saved_username') ?? '';
+    final data = await SessionService.getRememberMe();
+    final bool statusIngat = data['ingat_saya'] as bool;
+    final String savedUsername = data['saved_username'] as String;
 
-    if (statusIngat && savedUsername.isNotEmpty) {
+    if (statusIngat && savedUsername.isNotEmpty && mounted) {
       setState(() {
         _ingatSaya = true;
         _usernameController.text = savedUsername;
@@ -73,27 +72,19 @@ class _LoginPageState extends State<LoginPage> {
           .maybeSingle();
 
       if (response != null) {
-        final prefs = await SharedPreferences.getInstance();
-
-        // 2. Simpan pengaturan "Ingat Saya" secara lokal di perangkat
-        await prefs.setBool('ingat_saya', _ingatSaya);
-        if (_ingatSaya) {
-          await prefs.setString('saved_username', username);
-        } else {
-          await prefs.remove('saved_username');
-        }
-
-        // 3. Simpan identitas petugas aktif untuk FormPage dan PDF
-        await prefs.setString(
-          'current_user_nama',
-          response['nama'] ?? username,
+        // 2. Simpan sesi aktif dan status "Ingat Saya" lewat SessionService
+        await SessionService.saveSession(
+          nip: username,
+          nama: response['nama'] ?? username,
+          fotoUrl: response['foto_profil'] ?? '',
+          ingatSaya: _ingatSaya,
         );
-        await prefs.setString('current_user_nip', username);
 
         if (!mounted) return;
-        Navigator.pushReplacement(
-          context,
+        // 3. Pindah ke FormPage dan hapus riwayat navigasi sebelumnya
+        Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (context) => const FormPage()),
+          (Route<dynamic> route) => false,
         );
       } else {
         if (!mounted) return;
@@ -246,11 +237,11 @@ class _LoginPageState extends State<LoginPage> {
                         },
                   child: isResetting
                       ? const SizedBox(
-                          width: 16,
-                          height: 16,
+                          width: 18,
+                          height: 18,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Text('Simpan Password'),
+                      : const Text('Simpan'),
                 ),
               ],
             );
@@ -273,7 +264,11 @@ class _LoginPageState extends State<LoginPage> {
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color.fromARGB(255, 255, 3, 184), Color.fromARGB(255, 35, 170, 228)],
+            colors: [
+              Color.fromARGB(255, 115, 215, 255), // Biru langit cerah lembut
+              Color.fromARGB(255, 56, 163, 255), // Biru cerah terang
+              Color.fromARGB(255, 72, 202, 228), // Biru cerah lembut
+            ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -294,12 +289,11 @@ class _LoginPageState extends State<LoginPage> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Image.asset(
-                        'assets/images/logo_sekolah.png', // Sesuaikan dengan nama file logo sekolah Anda
+                        'assets/images/logo_sekolah.png',
                         height: 85,
                         width: 85,
                         fit: BoxFit.contain,
                         errorBuilder: (context, error, stackTrace) {
-                          // Jika file gambar belum terbaca, tampilkan ikon cadangan
                           return const Icon(
                             Icons.school,
                             size: 64,
@@ -307,10 +301,9 @@ class _LoginPageState extends State<LoginPage> {
                           );
                         },
                       ),
-
                       const SizedBox(height: 12),
                       const Text(
-                        'Agenda Kegiatan Tendik',
+                        'AGENDA KEGIATAN',
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
