@@ -1,4 +1,4 @@
-import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -10,55 +10,67 @@ class HasilFoto {
 }
 
 class CameraService {
-    static final ImagePicker _picker = ImagePicker();
+  static final ImagePicker _picker = ImagePicker();
 
-  // Mengambil foto dari kamera sekaligus mengompresnya
-  static Future<HasilFoto?> ambilDanKompresFoto() async {
-    final XFile? image = await _picker.pickImage(
+  /// 1. Mengambil foto langsung dari KAMERA (untuk dokumentasi kegiatan)
+  static Future<HasilFoto?> ambilDariKamera() async {
+    return await _prosesAmbilDanKompres(
       source: ImageSource.camera,
-      maxWidth: 1600,
-      maxHeight: 1600,
+      maxDimension: 1600,
+      minCompressDimension: 800,
     );
-
-    if (image == null) return null;
-
-    final Uint8List originalBytes = await image.readAsBytes();
-
-    final Uint8List compressedBytes =
-        await FlutterImageCompress.compressWithList(
-      originalBytes,
-      minWidth: 800,
-      minHeight: 800,
-      quality: 65,
-      format: CompressFormat.jpeg,
-    );
-
-    final namaBaru = '${image.name.split('.').first}.jpg';
-    return HasilFoto(namaFile: namaBaru, bytes: compressedBytes);
   }
-    // Mengambil foto profil dari berkas/galeri perangkat
-  static Future<HasilFoto?> pilihFotoDariBerkas() async {
-    final XFile? image = await _picker.pickImage(
+
+  /// 2. Mengambil foto dari GALERI (untuk dokumentasi kegiatan)
+  static Future<HasilFoto?> ambilDariGaleri() async {
+    return await _prosesAmbilDanKompres(
       source: ImageSource.gallery,
-      maxWidth: 800,
-      maxHeight: 800,
+      maxDimension: 1200,
+      minCompressDimension: 800,
     );
-
-    if (image == null) return null;
-
-    final Uint8List originalBytes = await image.readAsBytes();
-
-    final Uint8List compressedBytes =
-        await FlutterImageCompress.compressWithList(
-      originalBytes,
-      minWidth: 500,
-      minHeight: 500,
-      quality: 65,
-      format: CompressFormat.jpeg,
-    );
-
-    final namaBaru = '${image.name.split('.').first}.jpg';
-    return HasilFoto(namaFile: namaBaru, bytes: compressedBytes);
   }
 
+  /// 3. Mengambil foto profil dari BERKAS/GALERI (khusus ukuran 500x500)
+  static Future<HasilFoto?> pilihFotoDariBerkas() async {
+    return await _prosesAmbilDanKompres(
+      source: ImageSource.gallery,
+      maxDimension: 800,
+      minCompressDimension: 500,
+    );
+  }
+
+  /// Fungsi internal untuk memproses pengambilan dan kompresi gambar
+  static Future<HasilFoto?> _prosesAmbilDanKompres({
+    required ImageSource source,
+    required double maxDimension,
+    required int minCompressDimension,
+  }) async {
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: source,
+        maxWidth: maxDimension,
+        maxHeight: maxDimension,
+      );
+
+      // Jika pengguna menekan tombol kembali / batal
+      if (image == null) return null;
+
+      final Uint8List originalBytes = await image.readAsBytes();
+
+      final Uint8List compressedBytes =
+          await FlutterImageCompress.compressWithList(
+        originalBytes,
+        minWidth: minCompressDimension,
+        minHeight: minCompressDimension,
+        quality: 65,
+        format: CompressFormat.jpeg,
+      );
+
+      final namaBaru = '${image.name.split('.').first}.jpg';
+      return HasilFoto(namaFile: namaBaru, bytes: compressedBytes);
+    } catch (e) {
+      debugPrint('Error saat mengambil gambar ($source): $e');
+      return null;
+    }
+  }
 }

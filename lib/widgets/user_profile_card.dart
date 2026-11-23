@@ -48,7 +48,7 @@ class UserProfileCard extends StatelessWidget {
   }
 
   Future<void> _prosesUnggahFotoProfil(BuildContext context) async {
-    final hasil = await CameraService.pilihFotoDariBerkas();
+    final hasil = await CameraService.ambilDariGaleri();
     if (hasil == null || !context.mounted) return;
 
     showDialog(

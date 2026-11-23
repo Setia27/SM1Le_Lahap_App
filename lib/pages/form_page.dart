@@ -140,8 +140,41 @@ class _FormPageState extends State<FormPage> {
     }
   }
 
-  Future<void> _pickImage() async {
-    final hasil = await CameraService.ambilDanKompresFoto();
+    Future<void> _pickImage() async {
+    // Menampilkan pilihan Kamera atau Galeri dari bawah layar
+    final bool? dariKamera = await showModalBottomSheet<bool>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.camera_alt, color: Color(0xFF23d5ab)),
+                title: const Text('Ambil Foto dari Kamera'),
+                onTap: () => Navigator.pop(context, true),
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library, color: Color(0xFF23d5ab)),
+                title: const Text('Pilih Foto dari Galeri'),
+                onTap: () => Navigator.pop(context, false),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    // Jika pengguna menutup menu tanpa memilih apa-apa
+    if (dariKamera == null) return;
+
+    // Memanggil fungsi dari CameraService sesuai pilihan user
+    final hasil = dariKamera
+        ? await CameraService.ambilDariKamera()
+        : await CameraService.ambilDariGaleri();
+
     if (hasil != null) {
       setState(() {
         _lampiranFotoNama = hasil.namaFile;
@@ -149,10 +182,17 @@ class _FormPageState extends State<FormPage> {
       });
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Foto berhasil diambil dan dikompres!')),
+        SnackBar(
+          content: Text(
+            dariKamera
+                ? 'Foto dari kamera berhasil diambil dan dikompres!'
+                : 'Foto dari galeri berhasil dipilih dan dikompres!',
+          ),
+        ),
       );
     }
   }
+
 
   Future<void> _prosesCetakPeriode(DateTime mulai, DateTime selesai) async {
     showDialog(

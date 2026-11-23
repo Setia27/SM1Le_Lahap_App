@@ -37,11 +37,13 @@ class _LoginPageState extends State<LoginPage> {
     final data = await SessionService.getRememberMe();
     final bool statusIngat = data['ingat_saya'] as bool;
     final String savedUsername = data['saved_username'] as String;
+    final String savedPassword = data['saved_password'] as String;
 
     if (statusIngat && savedUsername.isNotEmpty && mounted) {
       setState(() {
         _ingatSaya = true;
         _usernameController.text = savedUsername;
+        _passwordController.text = savedPassword;
       });
     }
   }
